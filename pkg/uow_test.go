@@ -84,8 +84,8 @@ func Test_Do(t *testing.T) {
 		return &repo{tx}
 	})
 
-	assert.NoError(t, u.Do(context.Background(), func(uow Uow) error {
-		a, e := uow.GetRepository(context.Background(), "repo1")
+	assert.NoError(t, u.Do(context.Background(), func(ctx context.Context, uow Uow) error {
+		a, e := uow.GetRepository(ctx, "repo1")
 		assert.NoError(t, e)
 		assert.NotNil(t, a)
 
@@ -122,7 +122,7 @@ func Test_Do_Error(t *testing.T) {
 		return &repo{tx}
 	})
 
-	assert.EqualError(t, u.Do(context.Background(), func(uow Uow) error {
+	assert.EqualError(t, u.Do(context.Background(), func(_ context.Context, uow Uow) error {
 		return fmt.Errorf("do error")
 	}), "do error")
 }
@@ -136,7 +136,7 @@ func Test_Do_CommitError(t *testing.T) {
 		return &repo{tx}
 	})
 
-	assert.EqualError(t, u.Do(context.Background(), func(u Uow) error {
+	assert.EqualError(t, u.Do(context.Background(), func(_ context.Context, u Uow) error {
 		impl := u.(*uow)
 		impl.tx.Rollback()
 		return nil
@@ -152,7 +152,7 @@ func Test_Do_RollbackError(t *testing.T) {
 		return &repo{tx}
 	})
 
-	assert.EqualError(t, u.Do(context.Background(), func(u Uow) error {
+	assert.EqualError(t, u.Do(context.Background(), func(_ context.Context, u Uow) error {
 		impl := u.(*uow)
 		impl.tx.Rollback()
 		return fmt.Errorf("do error")

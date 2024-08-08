@@ -7,16 +7,14 @@ import (
 )
 
 type (
-	RepositoryFactory = func(tx *sql.Tx) any
+	RepositoryFactory = func(*sql.Tx) any
 
-	DoFunc = func(uow Uow) error
+	DoFunc = func(context.Context, Uow) error
 
 	Uow interface {
 		Register(name string, fc RepositoryFactory)
 		GetRepository(ctx context.Context, name string) (any, error)
 		Do(ctx context.Context, fn DoFunc) error
-		CommitOrRollback() error
-		Rollback() error
 		Unregister(name string)
 	}
 
@@ -70,20 +68,20 @@ func (u *uow) Do(ctx context.Context, fn DoFunc) error {
 	if err != nil {
 		return err
 	}
-	err = fn(u)
+	err = fn(ctx, u)
 	if err != nil {
-		if errRb := u.Rollback(); errRb != nil {
+		if errRb := u.rollback(); errRb != nil {
 			return fmt.Errorf("rollback error: %s due to: %s", errRb.Error(), err.Error())
 		}
 		return err
 	}
-	return u.CommitOrRollback()
+	return u.commitOrRollback()
 }
 
-func (u *uow) CommitOrRollback() error {
+func (u *uow) commitOrRollback() error {
 	err := u.tx.Commit()
 	if err != nil {
-		if errRb := u.Rollback(); errRb != nil {
+		if errRb := u.rollback(); errRb != nil {
 			return fmt.Errorf("rollback error: %s due to: %s", errRb.Error(), err.Error())
 		}
 		return err
@@ -92,7 +90,7 @@ func (u *uow) CommitOrRollback() error {
 	return nil
 }
 
-func (u *uow) Rollback() error {
+func (u *uow) rollback() error {
 	if u.tx == nil {
 		return fmt.Errorf("no active transaction")
 	}
